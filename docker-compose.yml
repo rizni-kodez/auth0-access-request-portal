@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: access-portal-postgres
+    environment:
+      POSTGRES_DB: access_portal
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api-access-mgmt:
+    build:
+      context: ./api-access-mgmt
+    container_name: access-portal-api
+    depends_on:
+      - postgres
+    ports:
+      - "4000:4000"
+    env_file:
+      - ./api-access-mgmt/.env.example
+
+volumes:
+  postgres_data:

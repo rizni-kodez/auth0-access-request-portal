@@ -1,0 +1,1 @@
+-- Phase 1 schema will be added in a later checkpoint.
