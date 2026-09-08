@@ -1,3 +1,22 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+	:root {
+		color-scheme: light;
+	}
+
+	body {
+		margin: 0;
+		font-family: "Manrope", "Segoe UI", sans-serif;
+		background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+		color: #0f172a;
+	}
+}
+
+@layer utilities {
+	.card-shadow {
+		box-shadow: 0 18px 40px -28px rgba(15, 23, 42, 0.45);
+	}
+}
