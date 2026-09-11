@@ -4,6 +4,7 @@ node_modules/
 # build outputs
 dist/
 build/
+*.tsbuildinfo
 
 # environment files
 .env
@@ -21,4 +22,3 @@ pnpm-debug.log*
 
 # editor
 .vscode/
-.DS_Store
