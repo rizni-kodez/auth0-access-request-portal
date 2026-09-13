@@ -1,3 +1,4 @@
+import { useAuth0 } from "@auth0/auth0-react";
 import { useMemo, useState } from "react";
 import AccessRequestForm from "../components/AccessRequestForm";
 import AccessRequestTable from "../components/AccessRequestTable";
@@ -31,12 +32,26 @@ const defaultFilters: DashboardFilters = {
 };
 
 export default function DashboardPage(): JSX.Element {
+  const { user } = useAuth0();
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [selectedRequest, setSelectedRequest] = useState<AccessRequest | undefined>(undefined);
   const [activeDeleteId, setActiveDeleteId] = useState<string | undefined>(undefined);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const auth0UserId = user?.sub;
+  const requesterProfile = useMemo(
+    () => ({
+      requesterName:
+        user?.name?.trim() ||
+        user?.nickname?.trim() ||
+        user?.email?.split("@")[0] ||
+        "Authenticated User",
+      requesterEmail: user?.email?.trim() || ""
+    }),
+    [user]
+  );
 
   const queryFilters: AccessRequestFilters = useMemo(
     () => ({
@@ -48,10 +63,10 @@ export default function DashboardPage(): JSX.Element {
     [filters]
   );
 
-  const requestsQuery = useAccessRequests(queryFilters);
-  const createMutation = useCreateAccessRequest();
-  const updateMutation = useUpdateAccessRequest();
-  const deleteMutation = useDeleteAccessRequest();
+  const requestsQuery = useAccessRequests(auth0UserId, queryFilters);
+  const createMutation = useCreateAccessRequest(auth0UserId);
+  const updateMutation = useUpdateAccessRequest(auth0UserId);
+  const deleteMutation = useDeleteAccessRequest(auth0UserId);
 
   const requests = requestsQuery.data ?? [];
 
@@ -65,6 +80,10 @@ export default function DashboardPage(): JSX.Element {
   }, [requests]);
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
+
+  if (!auth0UserId) {
+    return <LoadingState />;
+  }
 
   function openCreateForm(): void {
     setSubmitError(null);
@@ -91,8 +110,8 @@ export default function DashboardPage(): JSX.Element {
     try {
       if (formMode === "create") {
         await createMutation.mutateAsync({
-          requesterName: values.requesterName,
-          requesterEmail: values.requesterEmail,
+          requesterName: requesterProfile.requesterName,
+          requesterEmail: requesterProfile.requesterEmail,
           applicationName: values.applicationName,
           accessLevel: values.accessLevel,
           businessJustification: values.businessJustification,
@@ -101,8 +120,8 @@ export default function DashboardPage(): JSX.Element {
         });
       } else if (selectedRequest) {
         const payload: UpdateAccessRequestPayload = {
-          requesterName: values.requesterName,
-          requesterEmail: values.requesterEmail,
+          requesterName: requesterProfile.requesterName,
+          requesterEmail: requesterProfile.requesterEmail,
           applicationName: values.applicationName,
           accessLevel: values.accessLevel,
           businessJustification: values.businessJustification,
@@ -178,6 +197,8 @@ export default function DashboardPage(): JSX.Element {
         initialData={selectedRequest}
         isSubmitting={isSubmitting}
         submitError={submitError}
+        requesterName={requesterProfile.requesterName}
+        requesterEmail={requesterProfile.requesterEmail}
         onClose={closeForm}
         onSubmit={(values) => {
           void handleFormSubmit(values);

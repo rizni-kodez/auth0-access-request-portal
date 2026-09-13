@@ -11,6 +11,8 @@ interface AccessRequestFormProps {
 	isOpen: boolean;
 	mode: "create" | "edit";
 	initialData?: AccessRequest;
+	requesterName: string;
+	requesterEmail: string;
 	isSubmitting: boolean;
 	submitError?: string | null;
 	onClose: () => void;
@@ -28,14 +30,22 @@ const defaultFormValues: AccessRequestFormValues = {
 	notes: ""
 };
 
-function mapToFormValues(data?: AccessRequest): AccessRequestFormValues {
+function mapToFormValues(
+	requesterName: string,
+	requesterEmail: string,
+	data?: AccessRequest
+): AccessRequestFormValues {
 	if (!data) {
-		return defaultFormValues;
+		return {
+			...defaultFormValues,
+			requesterName,
+			requesterEmail
+		};
 	}
 
 	return {
-		requesterName: data.requesterName,
-		requesterEmail: data.requesterEmail,
+		requesterName,
+		requesterEmail,
 		applicationName: data.applicationName,
 		accessLevel: data.accessLevel,
 		businessJustification: data.businessJustification,
@@ -49,6 +59,8 @@ export default function AccessRequestForm({
 	isOpen,
 	mode,
 	initialData,
+	requesterName,
+	requesterEmail,
 	isSubmitting,
 	submitError,
 	onClose,
@@ -59,10 +71,10 @@ export default function AccessRequestForm({
 
 	useEffect(() => {
 		if (isOpen) {
-			setValues(mapToFormValues(initialData));
+			setValues(mapToFormValues(requesterName, requesterEmail, initialData));
 			setTouched(false);
 		}
-	}, [initialData, isOpen]);
+	}, [initialData, isOpen, requesterEmail, requesterName]);
 
 	const title = mode === "create" ? "Create Access Request" : "Edit Access Request";
 
@@ -142,8 +154,8 @@ export default function AccessRequestForm({
 							Requester Name
 							<input
 								value={values.requesterName}
-								onChange={(event) => updateField("requesterName", event.target.value)}
-								className="h-10 rounded-lg border border-slate-300 px-3 outline-none transition focus:border-slate-500"
+								readOnly
+								className="h-10 rounded-lg border border-slate-300 bg-slate-100 px-3 text-slate-600 outline-none"
 							/>
 							{touched && formErrors.requesterName ? (
 								<span className="text-xs text-rose-700">{formErrors.requesterName}</span>
@@ -154,8 +166,8 @@ export default function AccessRequestForm({
 							Requester Email
 							<input
 								value={values.requesterEmail}
-								onChange={(event) => updateField("requesterEmail", event.target.value)}
-								className="h-10 rounded-lg border border-slate-300 px-3 outline-none transition focus:border-slate-500"
+								readOnly
+								className="h-10 rounded-lg border border-slate-300 bg-slate-100 px-3 text-slate-600 outline-none"
 							/>
 							{touched && formErrors.requesterEmail ? (
 								<span className="text-xs text-rose-700">{formErrors.requesterEmail}</span>

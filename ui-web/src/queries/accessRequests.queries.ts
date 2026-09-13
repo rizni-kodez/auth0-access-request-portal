@@ -13,27 +13,28 @@ import type {
 
 const ACCESS_REQUESTS_QUERY_KEY = ["access-requests"] as const;
 
-export function useAccessRequests(filters: AccessRequestFilters) {
+export function useAccessRequests(auth0UserId: string | undefined, filters: AccessRequestFilters) {
 	return useQuery({
-		queryKey: [...ACCESS_REQUESTS_QUERY_KEY, filters],
-		queryFn: () => fetchAccessRequests(filters)
+		queryKey: [...ACCESS_REQUESTS_QUERY_KEY, auth0UserId, filters],
+		queryFn: () => fetchAccessRequests(filters),
+		enabled: Boolean(auth0UserId)
 	});
 }
 
-export function useCreateAccessRequest() {
+export function useCreateAccessRequest(auth0UserId: string | undefined) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: (payload: CreateAccessRequestPayload) => createAccessRequest(payload),
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({
-				queryKey: ACCESS_REQUESTS_QUERY_KEY
+				queryKey: [...ACCESS_REQUESTS_QUERY_KEY, auth0UserId]
 			});
 		}
 	});
 }
 
-export function useUpdateAccessRequest() {
+export function useUpdateAccessRequest(auth0UserId: string | undefined) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
@@ -41,20 +42,20 @@ export function useUpdateAccessRequest() {
 			updateAccessRequest(id, payload),
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({
-				queryKey: ACCESS_REQUESTS_QUERY_KEY
+				queryKey: [...ACCESS_REQUESTS_QUERY_KEY, auth0UserId]
 			});
 		}
 	});
 }
 
-export function useDeleteAccessRequest() {
+export function useDeleteAccessRequest(auth0UserId: string | undefined) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: (id: string) => deleteAccessRequest(id),
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({
-				queryKey: ACCESS_REQUESTS_QUERY_KEY
+				queryKey: [...ACCESS_REQUESTS_QUERY_KEY, auth0UserId]
 			});
 		}
 	});
