@@ -15,6 +15,7 @@ import {
 import { checkJwt } from "../middleware/checkJwt";
 import { attachUser } from "../middleware/attachUser";
 import { validateRequest } from "../middleware/validateRequest";
+import { ApiError } from "../utils/ApiError";
 
 const router = Router();
 
@@ -32,7 +33,13 @@ router.get(
   "/",
   validateRequest(accessRequestQuerySchema, "query"),
   asyncHandler(async (req, res) => {
-    const requests = await listAccessRequests(req.query);
+    const auth0UserId = req.user?.auth0UserId;
+
+    if (!auth0UserId) {
+      throw new ApiError(401, "Unauthorized");
+    }
+
+    const requests = await listAccessRequests(auth0UserId, req.query);
     res.json(requests);
   })
 );
@@ -41,7 +48,13 @@ router.post(
   "/",
   validateRequest(createAccessRequestSchema, "body"),
   asyncHandler(async (req, res) => {
-    const createdRequest = await createAccessRequest(req.body);
+    const auth0UserId = req.user?.auth0UserId;
+
+    if (!auth0UserId) {
+      throw new ApiError(401, "Unauthorized");
+    }
+
+    const createdRequest = await createAccessRequest(auth0UserId, req.body);
     res.status(201).json(createdRequest);
   })
 );
@@ -51,7 +64,13 @@ router.patch(
   validateRequest(accessRequestIdParamSchema, "params"),
   validateRequest(updateAccessRequestSchema, "body"),
   asyncHandler(async (req, res) => {
-    const updatedRequest = await updateAccessRequest(req.params.id, req.body);
+    const auth0UserId = req.user?.auth0UserId;
+
+    if (!auth0UserId) {
+      throw new ApiError(401, "Unauthorized");
+    }
+
+    const updatedRequest = await updateAccessRequest(req.params.id, auth0UserId, req.body);
     res.json(updatedRequest);
   })
 );
@@ -60,7 +79,13 @@ router.delete(
   "/:id",
   validateRequest(accessRequestIdParamSchema, "params"),
   asyncHandler(async (req, res) => {
-    await deleteAccessRequest(req.params.id);
+    const auth0UserId = req.user?.auth0UserId;
+
+    if (!auth0UserId) {
+      throw new ApiError(401, "Unauthorized");
+    }
+
+    await deleteAccessRequest(req.params.id, auth0UserId);
     res.json({ message: "Access request deleted successfully" });
   })
 );

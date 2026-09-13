@@ -11,6 +11,7 @@ import { ApiError } from "../utils/ApiError";
 function toAccessRequest(row: AccessRequestRow): AccessRequest {
 	return {
 		id: row.id,
+		auth0UserId: row.auth0_user_id,
 		requesterName: row.requester_name,
 		requesterEmail: row.requester_email,
 		applicationName: row.application_name,
@@ -24,9 +25,12 @@ function toAccessRequest(row: AccessRequestRow): AccessRequest {
 	};
 }
 
-export async function listAccessRequests(filters: AccessRequestQuery): Promise<AccessRequest[]> {
-	const conditions: string[] = [];
-	const values: unknown[] = [];
+export async function listAccessRequests(
+	auth0UserId: string,
+	filters: AccessRequestQuery
+): Promise<AccessRequest[]> {
+	const conditions: string[] = ["auth0_user_id = $1"];
+	const values: unknown[] = [auth0UserId];
 
 	if (filters.status) {
 		values.push(filters.status);
@@ -60,6 +64,7 @@ export async function listAccessRequests(filters: AccessRequestQuery): Promise<A
 	const query = `
 		SELECT
 			id,
+			auth0_user_id,
 			requester_name,
 			requester_email,
 			application_name,
@@ -80,10 +85,12 @@ export async function listAccessRequests(filters: AccessRequestQuery): Promise<A
 }
 
 export async function createAccessRequest(
+	auth0UserId: string,
 	payload: CreateAccessRequestInput
 ): Promise<AccessRequest> {
 	const query = `
 		INSERT INTO access_requests (
+			auth0_user_id,
 			requester_name,
 			requester_email,
 			application_name,
@@ -92,9 +99,10 @@ export async function createAccessRequest(
 			priority,
 			notes
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING
 			id,
+			auth0_user_id,
 			requester_name,
 			requester_email,
 			application_name,
@@ -108,6 +116,7 @@ export async function createAccessRequest(
 	`;
 
 	const values = [
+		auth0UserId,
 		payload.requesterName,
 		payload.requesterEmail,
 		payload.applicationName,
@@ -123,6 +132,7 @@ export async function createAccessRequest(
 
 export async function updateAccessRequest(
 	id: string,
+	auth0UserId: string,
 	payload: UpdateAccessRequestInput
 ): Promise<AccessRequest> {
 	const fields: string[] = [];
@@ -152,13 +162,15 @@ export async function updateAccessRequest(
 	}
 
 	values.push(id);
+	values.push(auth0UserId);
 
 	const query = `
 		UPDATE access_requests
 		SET ${fields.join(", ")}, updated_at = CURRENT_TIMESTAMP
-		WHERE id = $${values.length}
+		WHERE id = $${values.length - 1} AND auth0_user_id = $${values.length}
 		RETURNING
 			id,
+			auth0_user_id,
 			requester_name,
 			requester_email,
 			application_name,
@@ -180,8 +192,11 @@ export async function updateAccessRequest(
 	return toAccessRequest(result.rows[0]);
 }
 
-export async function deleteAccessRequest(id: string): Promise<void> {
-	const result = await pool.query("DELETE FROM access_requests WHERE id = $1", [id]);
+export async function deleteAccessRequest(id: string, auth0UserId: string): Promise<void> {
+	const result = await pool.query(
+		"DELETE FROM access_requests WHERE id = $1 AND auth0_user_id = $2",
+		[id, auth0UserId]
+	);
 
 	if (result.rowCount === 0) {
 		throw new ApiError(404, "Access request not found");

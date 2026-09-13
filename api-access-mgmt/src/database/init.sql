@@ -2,6 +2,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TABLE IF NOT EXISTS access_requests (
 	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+	auth0_user_id TEXT NOT NULL,
 	requester_name VARCHAR(120) NOT NULL,
 	requester_email VARCHAR(160) NOT NULL,
 	application_name VARCHAR(80) NOT NULL,
@@ -15,6 +16,12 @@ CREATE TABLE IF NOT EXISTS access_requests (
 	CONSTRAINT access_requests_status_check CHECK (status IN ('pending', 'in_review', 'approved', 'rejected')),
 	CONSTRAINT access_requests_priority_check CHECK (priority IN ('low', 'medium', 'high', 'urgent'))
 );
+
+ALTER TABLE access_requests
+	ADD COLUMN IF NOT EXISTS auth0_user_id TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_access_requests_auth0_user_id
+	ON access_requests (auth0_user_id);
 
 CREATE OR REPLACE FUNCTION set_updated_at_timestamp()
 RETURNS TRIGGER AS $$

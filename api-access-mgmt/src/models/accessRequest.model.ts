@@ -14,6 +14,7 @@ export type AccessRequestPriority = (typeof accessRequestPriorities)[number];
 
 export interface AccessRequest {
 	id: string;
+	auth0UserId: string;
 	requesterName: string;
 	requesterEmail: string;
 	applicationName: string;
@@ -28,6 +29,7 @@ export interface AccessRequest {
 
 export interface AccessRequestRow {
 	id: string;
+	auth0_user_id: string;
 	requester_name: string;
 	requester_email: string;
 	application_name: string;
@@ -59,7 +61,7 @@ export const createAccessRequestSchema = z.object({
 	businessJustification: z.string().trim().min(10).max(1000),
 	priority: z.enum(accessRequestPriorities).default("medium"),
 	notes: z.string().trim().max(1000).optional()
-});
+}).strict();
 
 export const updateAccessRequestSchema = z
 	.object({
@@ -72,6 +74,7 @@ export const updateAccessRequestSchema = z
 		status: z.enum(accessRequestStatuses).optional(),
 		notes: z.string().trim().max(1000).nullable().optional()
 	})
+	.strict()
 	.refine((payload) => Object.keys(payload).length > 0, {
 		message: "At least one field must be provided for update"
 	});
