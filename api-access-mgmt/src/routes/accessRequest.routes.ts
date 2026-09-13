@@ -12,9 +12,13 @@ import {
   listAccessRequests,
   updateAccessRequest
 } from "../services/accessRequest.service";
+import { checkJwt } from "../middleware/checkJwt";
+import { attachUser } from "../middleware/attachUser";
 import { validateRequest } from "../middleware/validateRequest";
 
 const router = Router();
+
+router.use(checkJwt, attachUser);
 
 function asyncHandler(
   handler: (req: Request, res: Response, next: NextFunction) => Promise<void>
