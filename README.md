@@ -1,303 +1,136 @@
 # auth0-access-request-portal
 
-Access Request Portal is a TypeScript monorepo that contains:
+Access Request Portal is a TypeScript monorepo with:
 
-- `ui-web`: React dashboard for creating and managing access requests.
-- `api-access-mgmt`: Express API with PostgreSQL persistence.
+- ui-web: React frontend for creating and managing access requests
+- api-access-mgmt: Express API with PostgreSQL persistence
 
-This repository currently implements **Phase 1** only (no authentication).
+This repository now includes Phase 2 Auth0 integration.
 
-## Project Overview
+## Phase 2 Overview
 
-The app provides an internal-style dashboard to manage requests for access to company tools like GitHub, Jira, Confluence, and others.
+Phase 2 adds authentication and per-user data isolation using Auth0:
 
-Users can:
+- Browser users sign up, log in, and log out through Auth0 Universal Login.
+- Frontend requests include an access token in the Authorization header.
+- Backend validates JWTs (issuer, audience, signature) using RS256/JWKS.
+- Access requests are scoped to the authenticated Auth0 user id.
 
-- View all requests
-- Create new requests
-- Edit request details and status
-- Delete requests
-- Search/filter requests
-- See summary cards by status
+### Simple Auth Flow
 
-## Phase 1 Scope
+```mermaid
+flowchart LR
+    B[Browser ui-web] --> U[Auth0 Universal Login]
+    U --> T[Access Token JWT]
+    T --> A[api-access-mgmt]
+    A --> V[JWT validation RS256/JWKS]
+    V --> P[(PostgreSQL)]
+```
 
-Implemented in this phase:
+## Auth0 Setup Summary
 
-- Full frontend and backend structure in one monorepo
-- REST API for access request CRUD
-- PostgreSQL storage
-- Validation and error handling on backend
-- React Query for server-state management on frontend
-- Docker Compose setup for PostgreSQL and backend API
+Configured Auth0 resources:
 
-Explicitly not implemented in Phase 1:
+- Tenant: kodez-access-portal (AU)
+- Custom API audience: https://api.access-portal.local
+- Application: Access Portal Web (Single Page Application)
+- Application: Access Portal API (Regular Web Application)
+- Allowed Callback URL: http://localhost:5173
+- Allowed Logout URL: http://localhost:5173
+- Allowed Web Origin: http://localhost:5173
+- User-delegated access from Access Portal Web to Access Portal API is granted
 
-- Auth0 integration
-- Login/register/logout
-- Custom username/password authentication
-- JWT/role-based authorization
+Notes:
+
+- Do not store or commit secrets in this repository.
+- Do not expose backend client secrets in frontend code.
+
+## Environment Variables
+
+Do not commit real .env files. Copy from .env.example and set values locally.
+
+### api-access-mgmt (.env)
+
+- PORT=<port>
+- NODE_ENV=<development|test|production>
+- DATABASE_URL=<postgresql-connection-string>
+- CORS_ORIGIN=<frontend-origin>
+- AUTH0_DOMAIN=<your-auth0-domain>
+- AUTH0_AUDIENCE=<your-auth0-audience>
+- AUTH0_CLIENT_ID=<your-api-app-client-id>
+- AUTH0_CLIENT_SECRET=<your-api-app-client-secret>
+
+### ui-web (.env)
+
+- VITE_API_BASE_URL=<backend-base-url>
+- VITE_AUTH0_DOMAIN=<your-auth0-domain>
+- VITE_AUTH0_CLIENT_ID=<your-spa-client-id>
+- VITE_AUTH0_AUDIENCE=<your-auth0-audience>
+
+## Create a Test User
+
+1. Start the frontend and open http://localhost:5173.
+2. On the landing page, click Sign up.
+3. Complete Auth0 Universal Login sign-up.
+4. After sign-up/login, you are redirected to /dashboard.
+
+## Updated Demo Flow (Phase 2)
+
+1. Start PostgreSQL and backend, then start ui-web.
+2. Open http://localhost:5173 and sign up from the landing page.
+3. After redirect to /dashboard, create an access request.
+4. In DBeaver, confirm the row has auth0_user_id matching the authenticated user sub.
+5. Open a private browser window, create/sign in as a second user, and verify only that user's own requests are visible.
+6. Call API without a token:
+   - curl http://localhost:4000/api/access-requests
+   - Expected result: 401 Unauthorized.
+7. Log out and confirm /dashboard is no longer accessible without authentication.
+
+## Security Notes
+
+- Uses Authorization Code Flow with PKCE for SPA authentication.
+- Backend validates JWTs using RS256 signature verification and JWKS key discovery.
+- API data access is scoped by authenticated user id for per-user isolation.
+- Update/delete on foreign rows return 404 to avoid leaking record existence.
+- Tokens are not stored in localStorage.
 
 ## Tech Stack
 
-Frontend (`ui-web`):
+Frontend (ui-web):
 
 - React + Vite
 - TypeScript
 - Tailwind CSS
-- TanStack Query (React Query)
+- TanStack Query
 - React Router
 - Axios
+- Auth0 React SDK
 
-Backend (`api-access-mgmt`):
+Backend (api-access-mgmt):
 
 - Node.js + Express
 - TypeScript
-- PostgreSQL + `pg`
+- PostgreSQL + pg
 - Zod
-- `cors`, `helmet`, `dotenv`
-- `pino` + `pino-http` request logging
+- cors, helmet, dotenv
+- pino + pino-http
+- express-oauth2-jwt-bearer
 
 Infrastructure:
 
 - Docker + Docker Compose
-- PostgreSQL 16 (container)
+- PostgreSQL 16
 
-## Folder Structure
+## Main Endpoints
 
-```text
-auth0-access-request-portal/
-├── api-access-mgmt/
-│   ├── src/
-│   │   ├── config/
-│   │   ├── database/
-│   │   ├── middleware/
-│   │   ├── models/
-│   │   ├── routes/
-│   │   ├── services/
-│   │   ├── utils/
-│   │   ├── app.ts
-│   │   └── server.ts
-│   ├── .dockerignore
-│   ├── .env.example
-│   ├── Dockerfile
-│   ├── package.json
-│   └── tsconfig.json
-├── ui-web/
-│   ├── src/
-│   │   ├── api/
-│   │   ├── components/
-│   │   ├── configs/
-│   │   ├── constants/
-│   │   ├── pages/
-│   │   ├── queries/
-│   │   ├── routes/
-│   │   ├── types/
-│   │   ├── utils/
-│   │   ├── App.tsx
-│   │   ├── index.css
-│   │   └── main.tsx
-│   ├── .env.example
-│   ├── package.json
-│   └── tsconfig.json
-├── docs/
-│   └── Access_Request_Portal_Phase1_PRD.md
-├── docker-compose.yml
-├── package.json
-└── README.md
-```
+- GET /health (public)
+- GET /api/access-requests (protected)
+- POST /api/access-requests (protected)
+- PATCH /api/access-requests/:id (protected, owner scoped)
+- DELETE /api/access-requests/:id (protected, owner scoped)
 
-## Prerequisites
+## Phase 3 Ideas
 
-- Node.js 20+
-- npm 10+
-- Docker Desktop
-- DBeaver (optional, for DB inspection)
-
-## Environment Variables
-
-Do not commit real `.env` files. Use `.env.example` as templates.
-
-Backend example (`api-access-mgmt/.env.example`):
-
-```env
-PORT=4000
-NODE_ENV=development
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/access_portal
-CORS_ORIGIN=http://localhost:5173
-```
-
-Frontend example (`ui-web/.env.example`):
-
-```env
-VITE_API_BASE_URL=http://localhost:4000
-```
-
-Suggested local setup:
-
-1. Copy each `.env.example` to `.env` in its own folder.
-2. Keep secrets local only.
-
-## Docker and PostgreSQL Setup
-
-Root `docker-compose.yml` runs:
-
-1. `postgres`
-2. `api-access-mgmt`
-
-PostgreSQL container config:
-
-- Database: `access_portal`
-- Username: `postgres`
-- Password: `postgres`
-- Port: `5432`
-
-API container config:
-
-- Port: `4000`
-- Uses `DATABASE_URL=postgresql://postgres:postgres@postgres:5432/access_portal`
-
-Start both services:
-
-```bash
-docker compose up --build
-```
-
-Start only PostgreSQL:
-
-```bash
-docker compose up -d postgres
-```
-
-Stop services:
-
-```bash
-docker compose down
-```
-
-Database schema is auto-initialized on backend start using:
-
-- `api-access-mgmt/src/database/init.sql`
-
-This SQL creates the `access_requests` table and related constraints/trigger.
-
-## DBeaver Connection Details
-
-Use these values:
-
-- Host: `localhost`
-- Port: `5432`
-- Database: `access_portal`
-- Username: `postgres`
-- Password: `postgres`
-
-After running the app, confirm:
-
-- `access_requests` table exists
-- Insert/update/delete actions are persisted
-
-## Backend Commands
-
-From repository root (workspace scripts):
-
-```bash
-npm run dev:api
-```
-
-Directly in backend folder:
-
-```bash
-cd api-access-mgmt
-npm install
-npm run dev
-npm run build
-npm start
-```
-
-## Frontend Commands
-
-From repository root (workspace scripts):
-
-```bash
-npm run dev:ui
-```
-
-Directly in frontend folder:
-
-```bash
-cd ui-web
-npm install
-npm run dev
-npm run build
-npm run preview
-```
-
-Frontend URL (default):
-
-- `http://localhost:5173`
-
-Backend URL (default):
-
-- `http://localhost:4000`
-
-## API Endpoints
-
-Base URL:
-
-- `http://localhost:4000`
-
-Health:
-
-- `GET /health`
-
-Access Requests:
-
-- `GET /api/access-requests`
-- `POST /api/access-requests`
-- `PATCH /api/access-requests/:id`
-- `DELETE /api/access-requests/:id`
-
-Supported query params for list endpoint:
-
-- `status`
-- `priority`
-- `application`
-- `search`
-
-Example:
-
-```http
-GET /api/access-requests?status=pending&priority=high&search=github
-```
-
-## Demo Flow
-
-1. Start PostgreSQL and backend (Docker Compose) or run backend locally.
-2. Start frontend in `ui-web`.
-3. Open `http://localhost:5173`.
-4. Create a new access request from the dashboard.
-5. Verify request appears in table and summary cards update.
-6. Use search/filter bar to narrow results.
-7. Edit request status/priority/details.
-8. Delete a request.
-9. Verify DB records in DBeaver.
-
-## Known Limitations
-
-- No authentication or authorization in Phase 1.
-- No user-specific ownership model yet.
-- No pagination/sorting controls yet.
-- No automated test suite included yet.
-- UI notifications are lightweight and not persisted.
-
-## Phase 2 Auth0 Plan (Preview)
-
-Phase 2 will add Auth0 without replacing core Phase 1 architecture:
-
-1. Frontend login/logout/register through Auth0 React SDK.
-2. Backend JWT validation middleware for protected routes.
-3. Route protection and user-aware request access.
-4. Store Auth0 user identifier (`sub`) with each access request.
-5. Restrict request visibility and actions by authenticated user/role rules.
-
-Phase 1 intentionally excludes all Auth0 and custom credential flows.
+- Admin role via Auth0 RBAC for cross-user approval/review workflows.
+- Custom email claim in access tokens via Auth0 Action.
+- Google social login via Auth0.
