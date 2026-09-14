@@ -41,16 +41,32 @@ export default function DashboardPage(): JSX.Element {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const auth0UserId = user?.sub;
+
+  const prefilledRequesterName = useMemo(() => {
+    const givenName = user?.given_name?.trim() ?? "";
+    const familyName = user?.family_name?.trim() ?? "";
+    const fullNameFromParts = `${givenName} ${familyName}`.trim();
+
+    if (fullNameFromParts) {
+      return fullNameFromParts;
+    }
+
+    const name = user?.name?.trim() ?? "";
+    const email = user?.email?.trim() ?? "";
+
+    if (name && name.toLowerCase() !== email.toLowerCase()) {
+      return name;
+    }
+
+    return "";
+  }, [user]);
+
   const requesterProfile = useMemo(
     () => ({
-      requesterName:
-        user?.name?.trim() ||
-        user?.nickname?.trim() ||
-        user?.email?.split("@")[0] ||
-        "Authenticated User",
+      requesterName: prefilledRequesterName,
       requesterEmail: user?.email?.trim() || ""
     }),
-    [user]
+    [prefilledRequesterName, user]
   );
 
   const queryFilters: AccessRequestFilters = useMemo(
@@ -110,7 +126,7 @@ export default function DashboardPage(): JSX.Element {
     try {
       if (formMode === "create") {
         await createMutation.mutateAsync({
-          requesterName: requesterProfile.requesterName,
+          requesterName: values.requesterName,
           requesterEmail: requesterProfile.requesterEmail,
           applicationName: values.applicationName,
           accessLevel: values.accessLevel,
@@ -120,7 +136,7 @@ export default function DashboardPage(): JSX.Element {
         });
       } else if (selectedRequest) {
         const payload: UpdateAccessRequestPayload = {
-          requesterName: requesterProfile.requesterName,
+          requesterName: values.requesterName,
           requesterEmail: requesterProfile.requesterEmail,
           applicationName: values.applicationName,
           accessLevel: values.accessLevel,

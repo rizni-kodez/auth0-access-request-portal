@@ -44,7 +44,7 @@ function mapToFormValues(
 	}
 
 	return {
-		requesterName,
+		requesterName: data.requesterName,
 		requesterEmail,
 		applicationName: data.applicationName,
 		accessLevel: data.accessLevel,
@@ -154,8 +154,9 @@ export default function AccessRequestForm({
 							Requester Name
 							<input
 								value={values.requesterName}
-								readOnly
-								className="h-10 rounded-lg border border-slate-300 bg-slate-100 px-3 text-slate-600 outline-none"
+								onChange={(event) => updateField("requesterName", event.target.value)}
+								placeholder="Your full name"
+								className="h-10 rounded-lg border border-slate-300 px-3 outline-none transition focus:border-slate-500"
 							/>
 							{touched && formErrors.requesterName ? (
 								<span className="text-xs text-rose-700">{formErrors.requesterName}</span>
