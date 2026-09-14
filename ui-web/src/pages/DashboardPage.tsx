@@ -2,6 +2,7 @@ import { useAuth0 } from "@auth0/auth0-react";
 import { useMemo, useState } from "react";
 import AccessRequestForm from "../components/AccessRequestForm";
 import AccessRequestTable from "../components/AccessRequestTable";
+import ConfirmDialog from "../components/ConfirmDialog";
 import EmptyState from "../components/EmptyState";
 import ErrorState from "../components/ErrorState";
 import FilterBar, { type DashboardFilters } from "../components/FilterBar";
@@ -37,6 +38,7 @@ export default function DashboardPage(): JSX.Element {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [selectedRequest, setSelectedRequest] = useState<AccessRequest | undefined>(undefined);
+  const [pendingDeleteRequest, setPendingDeleteRequest] = useState<AccessRequest | undefined>();
   const [activeDeleteId, setActiveDeleteId] = useState<string | undefined>(undefined);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -158,10 +160,19 @@ export default function DashboardPage(): JSX.Element {
     }
   }
 
-  async function handleDelete(request: AccessRequest): Promise<void> {
-    setActiveDeleteId(request.id);
+  function requestDelete(request: AccessRequest): void {
+    setPendingDeleteRequest(request);
+  }
+
+  async function confirmDelete(): Promise<void> {
+    if (!pendingDeleteRequest) {
+      return;
+    }
+
+    setActiveDeleteId(pendingDeleteRequest.id);
     try {
-      await deleteMutation.mutateAsync(request.id);
+      await deleteMutation.mutateAsync(pendingDeleteRequest.id);
+      setPendingDeleteRequest(undefined);
     } catch {
       // Keep UI minimal in this phase; query error display remains available.
     } finally {
@@ -202,10 +213,23 @@ export default function DashboardPage(): JSX.Element {
         <AccessRequestTable
           requests={requests}
           onEdit={openEditForm}
-          onDelete={handleDelete}
+          onDelete={requestDelete}
           busyRequestId={activeDeleteId}
         />
       ) : null}
+
+      <ConfirmDialog
+        isOpen={Boolean(pendingDeleteRequest)}
+        title="Delete request?"
+        message={`This will permanently delete the access request for ${pendingDeleteRequest?.applicationName ?? "this application"}. This cannot be undone.`}
+        confirmLabel="Delete"
+        confirmVariant="danger"
+        isConfirming={deleteMutation.isPending}
+        onCancel={() => setPendingDeleteRequest(undefined)}
+        onConfirm={() => {
+          void confirmDelete();
+        }}
+      />
 
       <AccessRequestForm
         isOpen={isFormOpen}
